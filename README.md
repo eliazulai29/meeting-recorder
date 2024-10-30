@@ -1,351 +1,225 @@
 # Meeting Recorder Bot - Setup Guide
 
-## Prerequisites
+## Overview
+A bot system that:
+1. Monitors Google Calendar for meetings
+2. Automatically joins meetings using Chrome browser
+3. Records meetings to local storage
+4. Exits and saves recording when meeting ends
 
-- Google Workspace Admin access (Super Admin role recommended)
-- Python 3.8+
-- Chrome browser installed
-- Google Cloud Console access
+## Setup Phases
 
-## 1. Google Workspace Setup
-
-### A. Create Service Account
-1. Access Google Cloud Console (console.cloud.google.com):
+### Phase 1: Google Cloud Project Setup (Required First)
+1. Create Project:
    ```
-   - Create new project "meeting-recorder"
-   - Note the project ID for future reference
+   1. Go to console.cloud.google.com
+   2. Create new project "meeting-recorder"
+   3. Note the project ID
    ```
 
 2. Enable Required APIs:
    ```
-   - Google Calendar API
-   - Google Meet API
-   - Google Drive API
-   - Google People API (for contact access)
+   1. Go to "APIs & Services" > "Enable APIs and Services"
+   2. Search and enable each:
+      - Google Calendar API
+      - Google Meet API
+   3. Wait for each API to fully enable before proceeding
    ```
 
 3. Create Service Account:
    ```
-   - Go to IAM & Admin > Service Accounts
-   - Click "Create Service Account"
-   - Name: meeting-recorder
-   - Description: Service account for meeting recording bot
-   - Click "Create and Continue"
-   - Click "Done"
+   1. Go to IAM & Admin > Service Accounts
+   2. Click "Create Service Account"
+      - Name: meeting-recorder-bot
+      - Description: Service account for meeting recording bot
+   3. Click "Create and Continue"
+   4. Add roles:
+      - Service Account Token Creator
+      - Service Account User
+   5. Click "Done"
    ```
 
-4. Generate Service Account Key:
+4. Generate and Download Credentials:
    ```
-   - Select the created service account
-   - Go to "Keys" tab
-   - Add Key > Create new key
-   - Choose JSON format
-   - Download and save as config/credentials.json
-   ```
-
-### B. Configure Domain-Wide Delegation
-
-1. Enable Domain-Wide Delegation:
-   ```
-   - Go to service account details
-   - Edit
-   - Enable "Domain-wide Delegation"
-   - Save
+   1. Select your service account
+   2. Go to "Keys" tab
+   3. Add Key > Create new key
+   4. Choose JSON format
+   5. Save as config/credentials.json in your project
    ```
 
-2. Configure API Scopes in Admin Console:
+### Phase 2: Google Workspace Admin Setup
+1. Configure Domain-Wide Delegation:
    ```
-   1. Go to admin.google.com
-   2. Security > API Controls > Domain-wide Delegation
+   1. Go to admin.google.com > Security > API Controls
+   2. Find "Domain-wide Delegation"
    3. Add new:
-      - Client ID: [Your service account client ID]
-      - OAuth Scopes (add all):
+      - Client ID: [Your service account client ID from credentials.json]
+      - OAuth Scopes:
         https://www.googleapis.com/auth/calendar.readonly
         https://www.googleapis.com/auth/calendar.events
-        https://www.googleapis.com/auth/drive.file
-        https://www.googleapis.com/auth/admin.directory.user.readonly
    ```
 
-### C. Create Bot User and Configure Permissions
-
-1. Create Bot User:
+2. Create Bot User:
    ```
-   Users > Add New User
-   - First Name: Meeting
-   - Last Name: Bot
-   - Email: bots@[your-domain].com
-   - Password: [secure-password]
-   ```
-
-2. Configure Bot User Permissions:
-   ```
-   1. Go to Admin roles
-   2. Create new custom role:
-      - Name: Meeting Bot Role
-      - Privileges:
-        - Calendar: Read/Write
-        - Meet: Read/Write
-        - Drive: Read/Write
-   3. Assign role to bot user
-   ```
-
-### D. Configure Google Meet Settings
-
-1. Navigate to Apps > Google Workspace > Google Meet
-2. Configure Meet Safety Settings:
-   ```
-   In Admin Console:
-   - Access: Set to "Anyone within your organization"
-   - External Access: Enable "Allow users in your organization to join external meetings"
-   - Recording: Enable "Let users record their meetings"
-   ```
-
-3. Configure Meet Host Controls:
-   ```
-   - Quick Access: ON
-   - Anonymous users: Allow from your domain
-   - Meeting creation: Allow all users
-   - Recording: Allow all users
-   ```
-
-### E. Configure Calendar Sharing
-
-1. For each user whose meetings need to be recorded:
-   ```
-   1. Open Google Calendar
-   2. Settings > [Calendar Name] > Share with specific people
-   3. Add:
-      - Email: [Your service account client ID]@[project-id].iam.gserviceaccount.com
-      - Permission: "Make changes and manage sharing"
-   4. Also share with bot user:
+   1. Go to Users > Add New User
       - Email: bots@[your-domain].com
-      - Permission: "Make changes and manage sharing"
+      - Set secure password
+   2. Store these credentials safely - needed for .env file
    ```
 
-### F. Configure Drive Permissions
-
-1. Create Storage Folder:
+3. Configure Google Meet Settings:
    ```
-   1. Create a Google Drive folder for recordings
-   2. Share with:
-      - Bot user (Editor access)
-      - Service account (Editor access)
+   1. Go to Apps > Google Workspace > Google Meet
+   2. Configure Settings:
+      - Access: "Anyone within your organization"
+      - Recording: Enable "Let users record their meetings"
+      - Host Management: Turn OFF
+      - Quick Access: ON
    ```
 
-## 2. Project Setup
+### Phase 3: Project Setup
+1. System Requirements:
+   ```
+   - Python 3.8+
+   - Chrome browser
+   - Git
+   ```
 
-1. Clone and Setup Environment:
+2. Clone and Setup:
    ```bash
+   # Clone repository
    git clone [repository-url]
    cd meeting-recorder
+
+   # Create virtual environment
    python -m venv venv
    source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
 
-2. Install Dependencies:
-   ```bash
+   # Install dependencies
    pip install -r requirements.txt
    ```
 
-3. Configure Environment:
+3. Create Required Directories:
    ```bash
-   # Create .env file:
+   mkdir -p config logs recordings
+   ```
+
+4. Configure Environment:
+   ```bash
+   # Create .env file with:
    BOT_EMAIL=bots@[your-domain].com
    BOT_PASSWORD=[your-bot-password]
-   STORAGE_FOLDER_ID=[google-drive-folder-id]
-   SERVICE_ACCOUNT_FILE=config/credentials.json
    ```
 
-## 3. Verification Steps
+5. Place Credentials:
+   ```
+   Move credentials.json to config/credentials.json
+   ```
 
-Run these checks to verify setup:
-
-1. Service Account Access:
+### Phase 4: Testing and Verification
+1. Verify Service Account:
    ```bash
+   # Run service account test
    python -m tests.verify_service_account
+   
+   # Expected output:
+   "Service account authenticated successfully"
    ```
 
-2. Calendar Access:
+2. Verify Calendar Access:
    ```bash
+   # Run calendar access test
    python -m tests.verify_calendar_access
+   
+   # Expected output:
+   "Successfully fetched calendar events"
    ```
 
-3. Meet Access:
+3. Test Meeting Join:
    ```bash
-   python -m tests.verify_meet_access
+   # Create a test meeting
+   1. Create a meeting using authorized user
+   2. Run the bot
+   3. Verify bot joins successfully
    ```
 
-## 4. Troubleshooting
+## Project Structure
+```
+meeting-recorder/
+├── config/
+│   ├── __init__.py
+│   ├── config.py
+│   └── credentials.json
+├── services/
+│   ├── __init__.py
+│   ├── calendar_service.py
+│   ├── meeting_bot.py
+│   └── meeting_manager.py
+├── logs/
+├── recordings/
+├── .env
+├── requirements.txt
+└── main.py
+```
 
-Common issues and solutions:
+## Troubleshooting Guide
 
-1. Calendar Access Issues:
-   - Verify service account has correct scopes
-   - Check calendar sharing permissions
-   - Verify bot user has calendar access
+### 1. Service Account Issues
+If service account authentication fails:
+1. Verify credentials.json is correct and in config/
+2. Check Domain-wide Delegation is enabled
+3. Verify OAuth scopes are exactly as specified
 
-2. Meet Join Issues:
-   - Check Meet settings in Admin Console
-   - Verify bot user has meeting creation rights
-   - Check network/firewall settings
+### 2. Calendar Access Issues
+If bot can't see meetings:
+1. Verify service account has calendar API enabled
+2. Check calendar sharing permissions
+3. Ensure meetings have Google Meet links
 
-3. Recording Issues:
-   - Verify Drive permissions
-   - Check storage quota
-   - Verify Meet recording settings
+### 3. Meeting Join Issues
+If bot can't join meetings:
+1. Verify BOT_EMAIL and BOT_PASSWORD in .env
+2. Check Meet settings in Admin Console
+3. Ensure Chrome is installed and updated
 
-## 5. Security Notes
+### 4. Recording Issues
+If recording fails:
+1. Check 'recordings' directory exists and is writable
+2. Verify Chrome has necessary permissions
+3. Check available disk space
 
-Important security considerations:
+## Running the Bot
 
-1. Service Account:
+1. Start the Bot:
+   ```bash
+   python main.py
+   ```
+
+2. Monitor Logs:
+   ```bash
+   tail -f logs/bot.log
+   ```
+
+3. View Recordings:
+   ```
+   All recordings are saved in ./recordings directory
+   Format: meeting_[ID]_[TIMESTAMP].webm
+   ```
+
+## Security Notes
+
+1. Credential Security:
    - Keep credentials.json secure
+   - Never commit .env or credentials.json
    - Regularly rotate service account keys
-   - Monitor API usage
 
 2. Bot Account:
    - Use strong password
-   - Enable 2FA if required
-   - Regularly audit access logs
+   - Regularly update password
+   - Monitor access logs
 
-3. Monitoring:
-   - Setup alerts for failed recordings
+3. Recording Storage:
+   - Regularly backup recordings
    - Monitor storage usage
-   - Track API quota usage
-
-
-
-# Process Overview
-                                      
-Meeting Discovery      Meeting Workers         Storage Manager
-[Calendar Service] -> [Meeting Instances] -> [Recording Storage]
-     |                      |                      |
-     |                      |                      |
-Monitors calendars     Each meeting           Handles saving
-for upcoming        gets its own Chrome     and organizing
-meetings            instance & process      recordings
-
-
-
-Meeting Recorder Bot - Setup Guide
-[Previous sections remain the same until Google Cloud Setup]
-A. Google Cloud Project Setup
-
-Create Project in Google Cloud Console:
-Copy- Go to console.cloud.google.com
-- Create new project "meeting-recorder"
-- Note the project ID
-
-Enable Required APIs:
-Copy- Go to "APIs & Services" > "Enable APIs and Services"
-- Search and enable each:
-  - Google Calendar API
-  - Google Meet API
-  - Google Drive API
-  - Google People API (required for authentication)
-
-Create Service Account:
-Copy- Go to IAM & Admin > Service Accounts
-- Click "Create Service Account"
-- Name: meeting-recorder-bot
-- Description: Service account for meeting recording bot
-- Click "Create and Continue"
-
-Configure Service Account Roles:
-Copy- In IAM & Admin > Service Accounts
-- Click on your service account
-- Go to "PERMISSIONS" tab
-- Click "GRANT ACCESS"
-- Add these specific roles:
-  - Service Account Token Creator
-  - Service Account User
-
-Generate Service Account Key:
-Copy- Go to "KEYS" tab
-- Add Key > Create new key
-- Choose JSON format
-- Save as config/credentials.json
-
-
-B. Configure Domain-Wide Delegation
-
-Enable Domain-Wide Delegation:
-Copy- Go to service account details
-- Edit
-- Enable "Domain-wide Delegation"
-- Save
-
-Configure API Scopes in Admin Console:
-Copy1. Go to admin.google.com
-2. Security > API Controls > Domain-wide Delegation
-3. Add new:
-   - Client ID: [Your service account client ID - found in credentials.json]
-   - Add exactly these OAuth Scopes:
-     https://www.googleapis.com/auth/calendar.readonly
-     https://www.googleapis.com/auth/calendar.events
-     https://www.googleapis.com/auth/drive.file
-
-
-C. Google Meet Settings Configuration
-
-Navigate to Apps > Google Workspace > Google Meet
-Configure Video Settings:
-Copy- Recording: Set "Let people record their meetings" to ON
-- Default video recording quality: Set to "Record at highest available resolution"
-
-Configure Meet Safety Settings:
-CopyDomain:
-- Set to "All users (including users not signed in)"
-
-Access:
-- Allow "Any meetings, including meetings created with personal accounts"
-
-Joining:
-- Turn OFF "Host must join before anyone else can join"
-- Set Meeting access type to "Trusted"
-
-Host Management:
-- Turn OFF "Start video calls with host management turned on"
-
-Additional Settings:
-Copy- Client logs upload: Enable
-- Reactions: Enable
-- Chat: Enable for all users
-- Integrations: Enable "Let users join calls in other Google Workspace apps"
-
-
-[Rest of the sections remain the same]
-Configuration Validation Checklist
-Before running the bot, verify:
-
-Service Account Setup:
-Copy✓ Service account created
-✓ Domain-wide delegation enabled
-✓ Correct OAuth scopes added
-✓ Required roles assigned:
-  - Service Account Token Creator
-  - Service Account User
-
-API Enablement:
-Copy✓ Google Calendar API
-✓ Google Meet API
-✓ Google Drive API
-✓ Google People API
-
-Google Meet Settings:
-Copy✓ Recording enabled
-✓ Host restrictions disabled
-✓ External access allowed
-✓ Meeting creation allowed
-
-Bot Account:
-Copy✓ Bot user created
-✓ Meet access enabled
-✓ Calendar access enabled
-✓ Drive access enabled
-
-Environment Configuration:
-Copy✓ credentials.json in correct location
-✓ .env file configured
-✓ Python environment setup
-✓ Required packages installed
+   - Implement cleanup policy
