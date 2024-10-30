@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  meeting-bot:
+    build: .
+    container_name: meeting-recorder-bot
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./recordings:/app/recordings
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - BOT_EMAIL=bots@natalieli.com
+      - BOT_PASSWORD=${BOT_PASSWORD}
+      - PRODUCTION_MODE=true
+      - DISPLAY=:99
+    restart: unless-stopped
