@@ -43,3 +43,6 @@ recordings/
 logs/
 screenshots/
 *.png
+
+# Ignore all JSON files
+*.json
